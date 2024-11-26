@@ -4,7 +4,7 @@ import { User } from '../models/User';
 export const validateUser = async (data: any) => {
     // Basic Joi validation
     const schema = Joi.object({
-        fullname: Joi.string()
+        fullName: Joi.string()
             .min(3)
             .max(50)
             .required(),
