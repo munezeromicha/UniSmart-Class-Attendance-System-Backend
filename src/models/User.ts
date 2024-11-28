@@ -6,6 +6,7 @@ interface IUser {
     password: string;
     studentId?: string; 
     role: 'student' | 'lecturer';
+    
 }
 
 const userSchema = new Schema<IUser>({
