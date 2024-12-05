@@ -1,141 +1,117 @@
-import { Request, RequestHandler, Response } from "express";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import { User } from "../models/User";
+import { Request, Response } from 'express';
+import User, { UserRole } from '../models/User';
+import Invitation from '../models/Invitation';
+import { generateAuthToken } from '../utils/tokenUtils';
 
-export const registerUser = async (req: Request, res: Response) => {
-  const {
-    email,
-    password,
-
-    fullName,
-    studentId,
-    role,
-  } = req.body;
-
+export const register = async (req: Request, res: Response): Promise<void> => {
   try {
-    console.log(studentId);
-    const emailExists = await User.findOne({ email });
-    if (emailExists) {
-      return res.status(400).json({ message: "Email already registered" });
-    }
+    const { 
+      firstName, 
+      lastName, 
+      email, 
+      password, 
+      token,
+      registrationNumber 
+    } = req.body;
 
-    if (role === "student") {
-      if (!studentId) {
-        return res
-          .status(400)
-          .json({ message: "Student ID is required for student registration" });
-      }
-
-      const studentIdExists = await User.findOne({ studentId });
-      if (studentIdExists) {
-        return res
-          .status(400)
-          .json({ message: "Student ID already registered" });
-      }
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({
-      fullName,
+    // Check invitation
+    const invitation = await Invitation.findOne({
+      token,
       email,
-      password: hashedPassword,
-      studentId,
-      role,
+      isUsed: false,
+      expiresAt: { $gt: new Date() }
     });
 
-    const savedUser = await newUser.save();
-
-    res.status(201).json({ message: "User registered successfully" });
-  } catch (error: unknown) {
-    console.error("Registration error:", error);
-    if (error instanceof Error) {
-      res.status(400).json({ message: error.message });
-    } else {
-      res.status(400).json({ message: "An unknown error occurred" });
-    }
-  }
-};
-
-export const loginUser = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
-
-  try {
-    const user = await User.findOne({ email });
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res.status(401).json({ message: "Invalid credentials" });
+    if (!invitation) {
+      res.status(400).json({ message: 'Invalid or expired invitation token' });
+      return;
     }
 
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET as string
-    );
-    res.json({ token, user });
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-      res.status(500).json({ message: error.message });
-    } else {
-      res.status(500).json({ message: "An unknown error occurred" });
+    // Additional validation for student registration
+    if (invitation.role === UserRole.STUDENT && !registrationNumber) {
+      res.status(400).json({ message: 'Registration number is required for students' });
+      return;
     }
-  }
-};
-export const getUsers: RequestHandler = async (req, res) => {
-  try {
-    const allUsers = await User.find().sort({ createdAt: 1 });
-    res.status(200).json({ data: allUsers, message: "All users" });
+
+    // Check if registration number already exists (for students)
+    if (registrationNumber) {
+      const existingUser = await User.findOne({ registrationNumber });
+      if (existingUser) {
+        res.status(400).json({ message: 'Registration number already exists' });
+        return;
+      }
+    }
+
+    // Create user
+    const user = new User({
+      firstName,
+      lastName,
+      email,
+      password,
+      role: invitation.role,
+      department: invitation.department,
+      school: invitation.school,
+      class: invitation.class,
+      ...(invitation.role === UserRole.STUDENT && { registrationNumber })
+    });
+
+    await user.save();
+
+    // Mark invitation as used
+    invitation.isUsed = true;
+    await invitation.save();
+
+    // Generate token
+    const authToken = generateAuthToken(user.id, user.role);
+
+    res.status(200).json({
+      message: 'Registration successful',
+      token: authToken,
+      user: {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+        department: user.department,
+        class: user.class,
+        registrationNumber: user.registrationNumber
+      }
+    });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Failed to access the database" });
-  }
-};
-export const getSingleUser: RequestHandler = async (req, res) => {
-  try {
-    const singleUser = await User.findOne({ _id: req.params.id });
-    if (!singleUser) {
-      res.status(400).json({
-        status: "Fail",
-        message: "User with that ID does not exist!",
+    console.error('Registration error:', error);
+    if (typeof error === 'object' && error !== null && 'code' in error && error.code === 11000) {
+      res.status(400).json({ 
+        message: 'Email or registration number already exists' 
       });
       return;
     }
-    res.status(200).json({
-      status: "Success",
-      message: "Single user",
-      data: singleUser,
-    });
-  } catch (error: any) {
-    res.status(500).json({
-      status: "Fail",
-      message: error.message,
-    });
+    res.status(500).json({ message: 'Server error' });
   }
 };
-export const updateSingleUser: RequestHandler = async (req, res) => {
+
+export const login = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { fullName, email } = req.body;
+    const { email, password } = req.body;
 
-    const userFound = await User.findOne({ _id: req.params.id });
-
-    if (!userFound) {
-      res.status(404).json({
-        status: "Fail",
-        message: "User not found",
-      });
+    const user = await User.findOne({ email });
+    if (!user || !(await user.comparePassword(password))) {
+      res.status(401).json({ message: 'Invalid credentials' });
       return;
     }
 
-    if (fullName) userFound.fullName = fullName;
-    if (email) userFound.email = email
-    await userFound.save();
+    const token = generateAuthToken(user.id, user.role);
+
     res.status(200).json({
-      status: "Success",
-      message: "User updated successfully",
-      data: userFound,
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role
+      }
     });
-  } catch (error: any) {
-    res.status(500).json({
-      status: "Fail",
-      message: error.message,
-    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
