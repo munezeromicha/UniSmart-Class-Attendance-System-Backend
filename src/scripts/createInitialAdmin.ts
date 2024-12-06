@@ -12,7 +12,7 @@ const createInitialAdmin = async () => {
     const adminUser = new User({
       firstName: 'Admin',
       lastName: 'Admin',
-      email: 'munezeromicha2000@gmail.com',
+      email: 'nzayisengaemmy2001@gmail.com',
       password: 'Admin@12345',
       role: UserRole.ADMIN,
       isActive: true
