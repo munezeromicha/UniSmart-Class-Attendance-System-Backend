@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import attendence from "../models/attendence";
 import * as XLSX from "xlsx";
+import { Op } from "sequelize";
 
 export const firstAttendance = async (
   req: Request,
@@ -15,10 +16,9 @@ export const firstAttendance = async (
       school,
       department,
       approvalReason,
-
       class: className,
+      module,
       start,
-    
     } = req.body;
 
     if (
@@ -26,13 +26,34 @@ export const firstAttendance = async (
       !lastName ||
       !college ||
       !school ||
-      !school ||
-      !department
-      ||!studentId
+      !department ||
+      !studentId
     ) {
       res.status(400).json({
         message: "Missing required fields",
       });
+      return;
+    }
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const existingAttendance = await attendence.findOne({
+      studentId,
+      createdAt: {
+        $gte: todayStart, 
+        $lt: todayEnd,   
+      },
+    });
+    
+
+    if (existingAttendance) {
+      res.status(400).json({
+        message: "Attendance already registered for today",
+      });
+      return;
     }
 
     const newAttendance = await attendence.create({
@@ -42,12 +63,11 @@ export const firstAttendance = async (
       studentId,
       college,
       school,
-
       department,
       approvalReason,
       class: className,
+      module,
       start,
-      
     });
 
     res.status(201).json({
@@ -149,7 +169,7 @@ export const getAttendanceByClassThisWeek = async (
     const today = new Date();
     const firstDayOfWeek = new Date(
       today.setDate(today.getDate() - today.getDay())
-    ); 
+    );
     const lastDayOfWeek = new Date(today.setDate(firstDayOfWeek.getDate() + 6)); // Saturday
 
     const attendanceRecords = await attendence.find({
@@ -321,7 +341,10 @@ export const getAttendenceAssignedToYou = async (
   }
 };
 
-export const exportAttendanceToday = async (req:Request, res:Response): Promise<void>=> {
+export const exportAttendanceToday = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     const { classId } = req.params;
 
@@ -338,7 +361,7 @@ export const exportAttendanceToday = async (req:Request, res:Response): Promise<
     });
 
     if (attendanceRecords.length === 0) {
-       res.status(404).json({
+      res.status(404).json({
         message: "No attendance records found for this class today.",
       });
     }
@@ -368,9 +391,9 @@ export const exportAttendanceToday = async (req:Request, res:Response): Promise<
 
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="Attendance_${classId}_${new Date()
-        .toISOString()
-        .split("T")[0]}.xlsx"`
+      `attachment; filename="Attendance_${classId}_${
+        new Date().toISOString().split("T")[0]
+      }.xlsx"`
     );
     res.setHeader(
       "Content-Type",
@@ -378,7 +401,7 @@ export const exportAttendanceToday = async (req:Request, res:Response): Promise<
     );
 
     res.send(buffer);
-  } catch (error:any) {
+  } catch (error: any) {
     console.error("Error exporting attendance records:", error);
     res.status(500).json({
       message: "Error exporting attendance records.",
