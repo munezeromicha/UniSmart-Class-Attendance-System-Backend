@@ -14,6 +14,44 @@ import {
 const attendanceRoute = express.Router();
 /**
  * @swagger
+ * components:
+ *   securitySchemes:
+ *     BearerAuth:
+ *       type: http
+ *       scheme: bearer
+ *       bearerFormat: JWT
+ *
+ *   schemas:
+ *     Attendance:
+ *       type: object
+ *       properties:
+ *         firstName:
+ *           type: string
+ *         lastName:
+ *           type: string
+ *         college:
+ *           type: string
+ *         studentId:
+ *           type: string
+ *         school:
+ *           type: string
+ *         department:
+ *           type: string
+ *         class:
+ *           type: string
+ *         module:
+ *           type: string
+ *         start:
+ *           type: boolean
+ *           description: Indicates if this is the start of attendance.
+ *       required:
+ *         - firstName
+ *         - lastName
+ *         - college
+ */
+
+/**
+ * @swagger
  * tags:
  *   name: Attendance
  *   description: API for managing attendance registrations
@@ -25,38 +63,14 @@ const attendanceRoute = express.Router();
  *   post:
  *     summary: Register attendance
  *     tags: [Attendance]
- *    
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               firstName:
- *                 type: string
- *               lastName:
- *                 type: string
- *               college:
- *                 type: string
- *               studentId:
- *                 type: string
- *               school:
- *                 type: string
- *               department:
- *                 type: string
- *               class:
- *                 type: string
- *               start:
- *                 type: boolean
- *                 description: Indicates if this is the start of attendance.
- *
- *             required:
- *               - firstName
- *               - lastName
- *               - college
- *
- *
+ *             $ref: '#/components/schemas/Attendance'
  *     responses:
  *       201:
  *         description: Attendance registered successfully.
@@ -70,46 +84,11 @@ const attendanceRoute = express.Router();
  *                   description: Confirmation message for successful registration.
  *                 data:
  *                   $ref: '#/components/schemas/Attendance'
- *
+ *       400:
+ *         description: Bad request.
  *       500:
- *         description: Error registering attendance.
+ *         description: Internal server error.
  */
-
-/**
-* @swagger
-* components:
-*   schemas:
-*     Attendance:
-*       type: object
-*       properties:
-*         studentId:
-*           type: string
-*           description: The unique identifier for the student.
-*         firstName:
-*           type: string
-*           description: The first name of the student.
-*         lastName:
-*           type: string
-*           description: The last name of the student.
-*         college:
-*           type: string
-*           description: The college of the student.
-*         school:
-*           type: string
-*           description: The school of the student.
-*         department:
-*           type: string
-*           description: The department of the student.
-*         class:
-*           type: string
-*           description: The class assigned to the student.
-*         start:
-*           type: boolean
-*           description: Indicates if this is the start of attendance.
-*/
-
-
-
 
 
 attendanceRoute.post("/register", auth(), firstAttendance);

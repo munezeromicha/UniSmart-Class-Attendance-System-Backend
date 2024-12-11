@@ -11,6 +11,7 @@ export interface IAttendance extends Document {
   approvalReason:string
   department?: string;
   class?: string;
+  module: string;
   start: boolean; 
   end: boolean; 
   status: string; 
@@ -31,6 +32,7 @@ const attendanceSchema = new Schema<IAttendance>({
   approvalReason:{type:String,default:"no reason"},
   department: { type: String },
   class: { type: String }, 
+  module:{ type: String ,require:true},
   start: { type: Boolean, default: false }, 
   end: { type: Boolean, default: false },
   status: { type: String, default:"absence" }, 
