@@ -99,15 +99,19 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       res.status(401).json({ message: 'Invalid credentials' });
       return;
     }
-
+console.log(user,'gggggggggggggggggg')
     const token = generateAuthToken(user.id, user.role);
 
     res.status(200).json({
       token,
       user: {
+        firstName:user.firstName,
+        lastName:user. lastName,
         id: user.id,
         email: user.email,
-        role: user.role
+        role: user.role,
+        department:user.department,
+        registrationNumber:user.registrationNumber
       }
     });
   } catch (error) {
