@@ -1,9 +1,19 @@
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 
-export const generateAuthToken = (userId: string, role: string): string => {
+export const generateAuthToken = (
+  userId: string, 
+  role: string, 
+  department?: string, 
+  class_name?: string
+): string => {
   return jwt.sign(
-    { userId, role },
+    { 
+      userId, 
+      role, 
+      department: department || '', 
+      class: class_name || '' 
+    },
     process.env.JWT_SECRET!,
     { expiresIn: '24h' }
   );

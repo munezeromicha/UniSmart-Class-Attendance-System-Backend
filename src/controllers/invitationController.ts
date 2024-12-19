@@ -24,6 +24,31 @@ export const sendInvitation = async (req: Request, res: Response): Promise<void>
       return;
     }
 
+    if (senderRole === UserRole.CLASS_REP && role === UserRole.STUDENT) {
+      if (!department || !className) {
+        res.status(400).json({
+          message: 'Department and class must be provided when inviting students'
+        });
+        return;
+      }
+
+      console.log('Validation Data:', {
+        requestDept: department,
+        userDept: req.user?.department,
+        requestClass: className,
+        userClass: req.user?.class
+      });
+
+      if (department.toLowerCase() !== req.user?.department?.toLowerCase() || 
+          className.toLowerCase() !== req.user?.class?.toLowerCase()) {
+        res.status(403).json({
+          message: 'You can only invite students to your own department and class'
+        });
+        return;
+      }
+
+    }
+
     const token = generateInvitationToken();
     const invitation = new Invitation({
       email,
@@ -32,7 +57,8 @@ export const sendInvitation = async (req: Request, res: Response): Promise<void>
       department,
       class: className,
       token,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      invitedBy: req.user?.userId
     });
 
     await invitation.save();
@@ -55,11 +81,20 @@ export const verifyInvitation = async (req: Request, res: Response): Promise<voi
       token,
       isUsed: false,
       expiresAt: { $gt: new Date() }
-    });
+    }).populate('invitedBy', 'department class');
 
     if (!invitation) {
       res.status(400).json({ message: 'Invalid or expired invitation token' });
       return;
+    }
+
+    if (invitation.role === UserRole.STUDENT) {
+      if (!invitation.department || !invitation.class) {
+        res.status(400).json({ 
+          message: 'Invalid invitation: missing department or class information'
+        });
+        return;
+      }
     }
 
     res.status(200).json({
@@ -69,7 +104,8 @@ export const verifyInvitation = async (req: Request, res: Response): Promise<voi
         role: invitation.role,
         school: invitation.school,
         department: invitation.department,
-        class: invitation.class
+        class: invitation.class,
+        invitedBy: invitation.invitedBy
       }
     });
   } catch (error) {
