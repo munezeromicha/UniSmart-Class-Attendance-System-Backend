@@ -59,7 +59,7 @@ class EmailService {
           `;
           break;
       }
-
+      const registrationUrl = `${process.env.FRONTEND_URL}/signup/${role}?email=${encodeURIComponent(email)}&token=${encodeURIComponent(token)}&role=${encodeURIComponent(role)}`;
       const mailOptions = {
         from: `"UniSmart Admin" <${process.env.SMTP_USER}>`,
         to: email,
@@ -100,7 +100,7 @@ class EmailService {
 
                   <!-- Call to Action Button -->
                   <div style="text-align: center; margin: 30px 0;">
-                    <a href="${process.env.FRONTEND_URL}/register?token=${token}" 
+                    <a href="${registrationUrl}" 
                        style="background-color: #003366; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">
                       Complete Registration
                     </a>

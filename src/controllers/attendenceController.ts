@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import attendence from "../models/attendence";
 import * as XLSX from "xlsx";
 import { Op } from "sequelize";
+import { io } from "../app";
+import { Server as SocketIOServer } from "socket.io";
 
 export const firstAttendance = async (
   req: Request,
@@ -43,11 +45,10 @@ export const firstAttendance = async (
     const existingAttendance = await attendence.findOne({
       studentId,
       createdAt: {
-        $gte: todayStart, 
-        $lt: todayEnd,   
+        $gte: todayStart,
+        $lt: todayEnd,
       },
     });
-    
 
     if (existingAttendance) {
       res.status(400).json({
@@ -69,7 +70,7 @@ export const firstAttendance = async (
       module,
       start,
     });
-
+    io.emit("attendanceCreated", newAttendance);
     res.status(201).json({
       message: "Attendance registered successfully",
       data: newAttendance,
@@ -82,19 +83,57 @@ export const firstAttendance = async (
     });
   }
 };
-export const secondAttendence = async (
+export const secondAttendance = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
-    const { id } = req.params;
-    const { end } = req.body;
+    const { id, studentId } = req.params;
+    const {
+      end,
+      attendenceOwner: attendanceOwner,
+      firstName,
+      lastName,
+      college,
+      school,
+      department,
+      approvalReason,
+      class: className,
+      module,
+      start,
+    } = req.body;
 
-    const attendanceRecord = await attendence.findById(id);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let attendanceRecord = await attendence.findOne({
+      studentId,
+      createdAt: { $gte: today },
+    });
 
     if (!attendanceRecord) {
-      res.status(404).json({
-        message: "Attendance record not found",
+      const newAttendance = new attendence({
+        attendenceOwner: req.user?.userId,
+        studentId,
+        firstName,
+        lastName,
+        college,
+        school,
+        department,
+        approvalReason,
+        class: className,
+        module,
+        start,
+        end,
+        status: "Absent",
+
+        createdAt: new Date(),
+      });
+
+      await newAttendance.save();
+      res.status(201).json({
+        message: "New attendance record created for the student",
+        data: newAttendance,
       });
       return;
     }
@@ -106,6 +145,7 @@ export const secondAttendence = async (
     }
 
     await attendanceRecord.save();
+    io.emit("attendanceUpdated", attendanceRecord);
 
     res.status(200).json({
       message: "Attendance updated successfully",
@@ -131,13 +171,15 @@ export const getAttendanceByClassToday = async (
     const startOfToday = new Date(today.setHours(0, 0, 0, 0));
     const endOfToday = new Date(today.setHours(23, 59, 59, 999));
 
-    const attendanceRecords = await attendence.find({
-      class: classId,
-      createdAt: {
-        $gte: startOfToday,
-        $lte: endOfToday,
-      },
-    });
+    const attendanceRecords = await attendence
+      .find({
+        class: classId,
+        createdAt: {
+          $gte: startOfToday,
+          $lte: endOfToday,
+        },
+      })
+      .sort({ createdAt: 1 });
 
     if (attendanceRecords.length === 0) {
       res.status(404).json({
@@ -367,20 +409,17 @@ export const exportAttendanceToday = async (
     }
 
     const dataForExcel = attendanceRecords.map((record) => ({
-      ID: record._id,
-      AttendanceOwner: record.attendenceOwner,
+      LectureID: record.attendenceOwner ? record.attendenceOwner : "",
       FirstName: record.firstName,
       LastName: record.lastName,
       College: record.college,
       School: record.school,
-      ApprovalReason: record.approvalReason,
+
       Department: record.department,
       Class: record.class,
       Start: record.start ? "Yes" : "No",
       End: record.end ? "Yes" : "No",
       Status: record.status,
-      Approved: record.approved ? "Yes" : "No",
-      AssignedTo: record.assignedTo,
     }));
 
     const workbook = XLSX.utils.book_new();

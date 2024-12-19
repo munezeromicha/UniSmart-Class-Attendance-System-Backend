@@ -7,7 +7,9 @@ import {
   getAttendanceByClassThisWeek,
   getAttendanceByClassToday,
   getAttendenceAssignedToYou,
-  secondAttendence,
+  
+  secondAttendance,
+  
   sendAttendence,
 } from "../controllers/attendenceController";
 
@@ -95,21 +97,40 @@ attendanceRoute.post("/register", auth(), firstAttendance);
 /**
  * @swagger
  * tags:
- *   name: Attendance
- *   description: API for managing attendance registrations
+ *   - name: Attendance
+ *     description: API for managing attendance registrations
  */
 
 /**
  * @swagger
- * /api/attendence/update/{id}:
+ * components:
+ *   securitySchemes:
+ *     BearerAuth:
+ *       type: http
+ *       scheme: bearer
+ *       bearerFormat: JWT
+ */
+
+/**
+ * @swagger
+ * /api/attendence/update/{studentId}/{id}:
  *   put:
- *     summary: second attendence
- *     tags: [Attendance]
+ *     summary: Update or create attendance for a student
+ *     tags:
+ *       - Attendance
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
+ *       - name: studentId
+ *         in: path
+ *         required: true
+ *         description: The ID of the student
+ *         schema:
+ *           type: string
  *       - name: id
  *         in: path
  *         required: true
- *         description: The ID of the attendance record to update
+ *         description: The ID of the attendance record
  *         schema:
  *           type: string
  *     requestBody:
@@ -121,10 +142,40 @@ attendanceRoute.post("/register", auth(), firstAttendance);
  *             properties:
  *               end:
  *                 type: boolean
- *                 description: Set to true to mark attendance as ended
+ *                 description: Indicates if the attendance has ended
+ *               start:
+ *                 type: boolean
+ *                 description: Indicates if the attendance has started
+ *               firstName:
+ *                 type: string
+ *                 description: First name of the student
+ *               lastName:
+ *                 type: string
+ *                 description: Last name of the student
+ *               studentId:
+ *                 type: string
+ *                 description: Student ID
+ *               college:
+ *                 type: string
+ *                 description: College name
+ *               school:
+ *                 type: string
+ *                 description: School name
+ *               department:
+ *                 type: string
+ *                 description: Department name
+ *               approvalReason:
+ *                 type: string
+ *                 description: Reason for attendance approval
+ *               class:
+ *                 type: string
+ *                 description: Class name
+ *               module:
+ *                 type: string
+ *                 description: Module name
  *             required:
  *               - end
- *
+ *               - start
  *     responses:
  *       200:
  *         description: Attendance updated successfully.
@@ -135,17 +186,52 @@ attendanceRoute.post("/register", auth(), firstAttendance);
  *               properties:
  *                 message:
  *                   type: string
+ *                   example: Attendance updated successfully
  *                 data:
  *                   $ref: '#/components/schemas/Attendance'
- *
+ *       201:
+ *         description: New attendance record created successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: New attendance record created for the student
+ *                 data:
+ *                   $ref: '#/components/schemas/Attendance'
  *       404:
  *         description: Attendance record not found.
- *
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Attendance record not found
  *       500:
  *         description: Error updating attendance.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Error updating attendance
+ *                 error:
+ *                   type: string
+ *                   example: Internal Server Error
  */
 
-attendanceRoute.put("/update/:id", secondAttendence);
+
+
+attendanceRoute.put("/update/:studentId/:id",auth(), secondAttendance);
+
+
+
 /**
  * @swagger
  * tags:
