@@ -37,8 +37,18 @@ const userSchema = new Schema<IUser>({
     required: true 
   },
   school: { type: String },
-  department: { type: String },
-  class: { type: String },
+  department: {
+    type: String,
+    required: function() {
+      return this.role === UserRole.CLASS_REP || this.role === UserRole.STUDENT;
+    }
+  },
+  class: {
+    type: String,
+    required: function() {
+      return this.role === UserRole.CLASS_REP || this.role === UserRole.STUDENT;
+    }
+  },
   registrationNumber: { 
     type: String, 
     sparse: true, 

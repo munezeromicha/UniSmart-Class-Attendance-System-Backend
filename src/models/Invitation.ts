@@ -10,6 +10,7 @@ export interface IInvitation extends Document {
   token: string;
   expiresAt: Date;
   isUsed: boolean;
+  invitedBy?: mongoose.Types.ObjectId;
 }
 
 const invitationSchema = new Schema<IInvitation>({
@@ -24,6 +25,7 @@ const invitationSchema = new Schema<IInvitation>({
   class: { type: String },
   token: { type: String, required: true },
   expiresAt: { type: Date, required: true },
+  invitedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   isUsed: { type: Boolean, default: false }
 }, {
   timestamps: true

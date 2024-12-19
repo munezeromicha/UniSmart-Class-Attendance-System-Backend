@@ -12,7 +12,7 @@ export const auth = (allowedRoles: UserRole[] = Object.values(UserRole)) => {
         return;
       }
 
-      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string; role: UserRole };
+      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string; role: UserRole; department: string; class: string };
       
       if (allowedRoles.length > 0 && !allowedRoles.includes(decoded.role)) {
         res.status(403).json({ message: 'Not authorized' });
